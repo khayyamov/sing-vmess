@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/khayyamov/sing-vmess"
+	"github.com/sagernet/sing-vmess"
 	"github.com/sagernet/sing/common"
 	"github.com/sagernet/sing/common/buf"
 	M "github.com/sagernet/sing/common/metadata"
