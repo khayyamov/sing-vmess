@@ -114,7 +114,7 @@ func (s *Service[U]) UpdateUsers(userList []U, userIdList []string, alterIdList 
 	return nil
 }
 
-func (s *Service[U]) AddUser(userList []U, userIdList []string, alterIdList []int) {
+func (s *Service[U]) AddUser(userList []U, userIdList []string, alterIdList []int) error {
 	userAlterIds := make(map[U][][16]byte)
 	for i, user := range userList {
 		userId := userIdList[i]
@@ -127,7 +127,7 @@ func (s *Service[U]) AddUser(userList []U, userIdList []string, alterIdList []in
 		userIdCipher, err := aes.NewCipher(KDF(userCmdKey[:], KDFSaltConstAuthIDEncryptionKey)[:16])
 		if err != nil {
 			print("failed to add vless user: " + err.Error())
-			return
+			return err
 		}
 		s.userIdCipher[user] = userIdCipher
 		alterId := alterIdList[i]
