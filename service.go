@@ -114,6 +114,60 @@ func (s *Service[U]) UpdateUsers(userList []U, userIdList []string, alterIdList 
 	return nil
 }
 
+func (s *Service[U]) AddUser(userList []U, userIdList []string, alterIdList []int) {
+	userAlterIds := make(map[U][][16]byte)
+	for i, user := range userList {
+		userId := userIdList[i]
+		userUUID := uuid.FromStringOrNil(userId)
+		if userUUID == uuid.Nil {
+			userUUID = uuid.NewV5(userUUID, userId)
+		}
+		userCmdKey := Key(userUUID)
+		s.userKey[user] = userCmdKey
+		userIdCipher, err := aes.NewCipher(KDF(userCmdKey[:], KDFSaltConstAuthIDEncryptionKey)[:16])
+		if err != nil {
+			print("failed to add vless user: " + err.Error())
+			return
+		}
+		s.userIdCipher[user] = userIdCipher
+		alterId := alterIdList[i]
+		if alterId > 0 {
+			alterIds := make([][16]byte, 0, alterId)
+			currentId := userUUID
+			for j := 0; j < alterId; j++ {
+				currentId = AlterId(currentId)
+				alterIds = append(alterIds, currentId)
+			}
+			userAlterIds[user] = alterIds
+			s.alterIds[user] = alterIds
+		}
+	}
+	s.generateALegacyKeys(userAlterIds)
+}
+
+func (s *Service[U]) generateALegacyKeys(alterIds map[U][][16]byte) {
+	nowSec := s.time().Unix()
+	endSec := nowSec + CacheDurationSeconds
+	var hashValue [16]byte
+
+	for user, alterIds := range alterIds {
+		beginSec := s.alterIdUpdateTime[user]
+		if beginSec < nowSec-CacheDurationSeconds {
+			beginSec = nowSec - CacheDurationSeconds
+		}
+		for i, alterId := range alterIds {
+			idHash := hmac.New(md5.New, alterId[:])
+			for ts := beginSec; ts <= endSec; ts++ {
+				common.Must(binary.Write(idHash, binary.BigEndian, uint64(ts)))
+				idHash.Sum(hashValue[:0])
+				idHash.Reset()
+				s.alterIdMap[hashValue] = legacyUserEntry[U]{user, ts, i}
+			}
+		}
+		s.alterIdUpdateTime[user] = nowSec
+	}
+}
+
 func (s *Service[U]) Start() error {
 	const updateInterval = 10 * time.Second
 	if len(s.alterIds) > 0 {
