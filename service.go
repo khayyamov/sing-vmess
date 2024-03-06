@@ -143,6 +143,7 @@ func (s *Service[U]) AddUser(userList []U, userIdList []string, alterIdList []in
 		}
 	}
 	s.generateALegacyKeys(userAlterIds)
+	return nil
 }
 
 func (s *Service[U]) generateALegacyKeys(alterIds map[U][][16]byte) {
