@@ -169,6 +169,39 @@ func (s *Service[U]) generateALegacyKeys(alterIds map[U][][16]byte) {
 	}
 }
 
+func (s *Service[U]) DeleteUser(userList []U, userIdList []string, alterIdList []int) error {
+	userAlterIds := make(map[U][][16]byte)
+	for i, user := range userList {
+		userId := userIdList[i]
+		userUUID := uuid.FromStringOrNil(userId)
+		delete(s.userKey, user)
+		delete(s.userIdCipher, user)
+		alterId := alterIdList[i]
+		if alterId > 0 {
+			alterIds := make([][16]byte, 0, alterId)
+			currentId := userUUID
+			for j := 0; j < alterId; j++ {
+				currentId = AlterId(currentId)
+				alterIds = append(alterIds, currentId)
+			}
+			userAlterIds[user] = alterIds
+			delete(s.alterIds, user)
+		}
+	}
+	return nil
+}
+
+func (s *Service[U]) DeleteALegacyKeys(alterIds map[U][][16]byte) {
+	for user, _ := range alterIds {
+		for i := range s.alterIdMap {
+			if s.alterIdMap[i].User == user {
+				delete(s.alterIdMap, i)
+			}
+		}
+		delete(s.alterIdUpdateTime, user)
+	}
+}
+
 func (s *Service[U]) Start() error {
 	const updateInterval = 10 * time.Second
 	if len(s.alterIds) > 0 {
