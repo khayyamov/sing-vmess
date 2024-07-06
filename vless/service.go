@@ -53,6 +53,28 @@ func (s *Service[T]) UpdateUsers(userList []T, userUUIDList []string, userFlowLi
 	s.userFlow = userFlowMap
 }
 
+func (s *Service[T]) AddUser(userList []T, userUUIDList []string, userFlowList []string) {
+	for i, userName := range userList {
+		userID := uuid.FromStringOrNil(userUUIDList[i])
+		if userID == uuid.Nil {
+			userID = uuid.NewV5(uuid.Nil, userUUIDList[i])
+		}
+		s.userMap[userID] = userName
+		s.userFlow[userName] = userFlowList[i]
+	}
+}
+
+func (s *Service[T]) DeleteUser(userList []T, userUUIDList []string, userFlowList []string) {
+	for i, userName := range userList {
+		userID := uuid.FromStringOrNil(userUUIDList[i])
+		if userID == uuid.Nil {
+			userID = uuid.NewV5(uuid.Nil, userUUIDList[i])
+		}
+		delete(s.userMap, userID)
+		delete(s.userFlow, userName)
+	}
+}
+
 var _ N.TCPConnectionHandler = (*Service[int])(nil)
 
 func (s *Service[T]) NewConnection(ctx context.Context, conn net.Conn, metadata M.Metadata) error {
